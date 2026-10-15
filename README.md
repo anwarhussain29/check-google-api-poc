@@ -13,11 +13,11 @@ A small Next.js app that imports leads (customer name, phone and address), looks
   - panel count and yearly energy output gauges
   - a panel count slider that saves the selected configuration and its energy output to the lead
   - an "API Response" dialog with the raw Solar API JSON
-- Everything (metrics, selection and the raw response) is stored in SQLite.
+- Everything (metrics, selection and the raw response) is stored in Postgres (Neon).
 
 ## Stack
 
-Next.js 15 (App Router, server actions), Tailwind CSS, shadcn/ui, Prisma with SQLite, `@vis.gl/react-google-maps` and `papaparse`.
+Next.js 15 (App Router, server actions), Tailwind CSS, shadcn/ui, Prisma with Neon Postgres, `@vis.gl/react-google-maps` and `papaparse`.
 
 ## Setup
 
@@ -25,7 +25,8 @@ Next.js 15 (App Router, server actions), Tailwind CSS, shadcn/ui, Prisma with SQ
    - Solar API
    - Geocoding API
    - Maps JavaScript API
-2. Copy the env file and fill in your keys:
+2. Create a Neon Postgres database. The easiest way is from your Vercel project: Storage, then Create Database, then Neon. This sets `DATABASE_URL` and `DATABASE_URL_UNPOOLED` on Vercel.
+3. Copy the env file and fill in the values (or run `vercel env pull .env` to copy them from Vercel):
 
    ```bash
    cp .env.example .env
@@ -33,21 +34,29 @@ Next.js 15 (App Router, server actions), Tailwind CSS, shadcn/ui, Prisma with SQ
 
    | Variable | Used by |
    | --- | --- |
-   | `DATABASE_URL` | Prisma (defaults to `file:./dev.db`) |
+   | `DATABASE_URL` | Prisma at runtime (Neon pooled connection) |
+   | `DATABASE_URL_UNPOOLED` | Prisma migrations (Neon direct connection) |
    | `GOOGLE_MAPS_API_KEY` | Server: Geocoding + Solar API |
    | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Browser: Maps JavaScript API |
 
-   The same key works for both variables. For anything beyond local testing, use a separate browser key restricted by HTTP referrer.
+   The same key works for both Google variables. For anything beyond local testing, use a separate browser key restricted by HTTP referrer.
 
-3. Install, create the database and run:
+4. Install, create the tables and run:
 
    ```bash
    npm install
-   npx prisma migrate dev
+   npx prisma migrate deploy
    npm run dev
    ```
 
-4. Open [http://localhost:3000](http://localhost:3000).
+5. Open [http://localhost:3000](http://localhost:3000).
+
+## Deploying to Vercel
+
+1. Import the GitHub repo in Vercel and attach the Neon database (step 2 above).
+2. Add `GOOGLE_MAPS_API_KEY` and `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` under Project Settings, then Environment Variables.
+3. If the browser key is restricted by HTTP referrer, add your `*.vercel.app` domain to it.
+4. Deploy. `npm run build` runs `prisma migrate deploy` first, so the tables are created on the first build.
 
 ## CSV format
 
