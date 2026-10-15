@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import {
   CodeXmlIcon,
+  GaugeIcon,
   InfoIcon,
   LeafIcon,
   SolarPanelIcon,
@@ -27,6 +28,7 @@ import {
   extractMetrics,
   formatNumber,
   getPanelConfigs,
+  productionFactors,
   type BuildingInsights,
 } from "@/lib/solar";
 
@@ -54,6 +56,9 @@ export function SolarPanelCard({ leadId, insights, initialPanelCount }: Props) {
   const panelCount = selected?.panelsCount ?? 0;
   const energyKwh = selected?.yearlyEnergyDcKwh ?? 0;
   const maxEnergy = configs[configs.length - 1]?.yearlyEnergyDcKwh ?? 0;
+  const factors = selected
+    ? productionFactors(selected, insights.solarPotential.panelCapacityWatts)
+    : null;
 
   const persist = (idx: number) => {
     const config = configs[idx];
@@ -156,6 +161,27 @@ export function SolarPanelCard({ leadId, insights, initialPanelCount }: Props) {
             onValueChange={(v) => setIndex(Array.isArray(v) ? v[0] : (v as number))}
             onValueCommitted={(v) => persist(Array.isArray(v) ? v[0] : (v as number))}
           />
+
+          <ul className="mt-6 space-y-3">
+            <li className="flex items-center gap-3">
+              <GaugeIcon className="size-5 text-blue-600" />
+              <span className="flex-1">
+                Production factor <span className="text-muted-foreground">(kWh/panel/yr)</span>
+              </span>
+              <span className="tabular-nums">{formatNumber(factors?.kwhPerPanel)}</span>
+              <InfoTip text="Yearly energy output divided by the number of panels." />
+            </li>
+            <li className="flex items-center gap-3">
+              <GaugeIcon className="size-5 text-blue-600" />
+              <span className="flex-1">
+                Production factor <span className="text-muted-foreground">(kWh/kW/yr)</span>
+              </span>
+              <span className="tabular-nums">{formatNumber(factors?.kwhPerKw)}</span>
+              <InfoTip
+                text={`Yearly energy output divided by system size (panel count x ${insights.solarPotential.panelCapacityWatts} W).`}
+              />
+            </li>
+          </ul>
         </>
       )}
 

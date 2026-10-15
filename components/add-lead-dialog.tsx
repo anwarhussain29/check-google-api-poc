@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState } from "react";
 import { PlusIcon } from "lucide-react";
 import { toast } from "sonner";
 import { createLead, type ActionResult } from "@/app/actions";
+import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -35,7 +36,7 @@ export function AddLeadDialog() {
   }, [state]);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={setOpen} modal="trap-focus" disablePointerDismissal>
       <DialogTrigger render={<Button />}>
         <PlusIcon />
         Add lead
@@ -56,11 +57,9 @@ export function AddLeadDialog() {
           </div>
           <div className="grid gap-2">
             <Label htmlFor="address">Address</Label>
-            <Input
+            <AddressAutocomplete
               id="address"
-              name="address"
-              required
-              placeholder="1600 Amphitheatre Pkwy, Mountain View, CA"
+              placeholder="Start typing an address..."
             />
           </div>
           <DialogFooter>

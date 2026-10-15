@@ -72,7 +72,7 @@ export default async function LeadDetailPage({
       )}
 
       {hasData && lead.lat != null && lead.lng != null ? (
-        <div className="relative h-[680px] overflow-hidden rounded-2xl border">
+        <div className="relative h-[760px] overflow-hidden rounded-2xl border">
           <SolarMap lat={lead.lat} lng={lead.lng} />
           <div className="absolute top-4 left-4">
             <SolarPanelCard

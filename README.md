@@ -4,14 +4,17 @@ A small Next.js app that imports leads (customer name, phone and address), looks
 
 ## Features
 
-- Add leads manually or import them from a CSV file.
+- Add leads manually or import them from a CSV file. The manual form's address field uses the legacy Google Places autocomplete widget (`google.maps.places.Autocomplete`); picking a suggestion saves the place's coordinates with the lead.
 - For each lead, the "Fetch Solar Data" button:
-  1. geocodes the address with the Geocoding API, then
+  1. uses the saved coordinates if the address came from autocomplete, otherwise geocodes the address with the Geocoding API, then
   2. calls `buildingInsights:findClosest`, trying `HIGH` imagery quality first and falling back to `MEDIUM` and then `LOW`.
 - The lead detail page shows a satellite map centered on the building next to an info panel with:
   - sunshine hours per year, roof area, max panel count and CO2 offset factor
   - panel count and yearly energy output gauges
   - a panel count slider that saves the selected configuration and its energy output to the lead
+  - two production factors for the selected configuration, also shown in the leads table:
+    - kWh per panel per year = yearly energy output / panel count
+    - kWh per kW per year = yearly energy output / (panel count x panel watts / 1000)
   - an "API Response" dialog with the raw Solar API JSON
 - Everything (metrics, selection and the raw response) is stored in Postgres (Neon).
 
@@ -25,6 +28,7 @@ Next.js 15 (App Router, server actions), Tailwind CSS, shadcn/ui, Prisma with Ne
    - Solar API
    - Geocoding API
    - Maps JavaScript API
+   - Places API (legacy), for address autocomplete
 2. Create a Neon Postgres database. The easiest way is from your Vercel project: Storage, then Create Database, then Neon. This sets `DATABASE_URL` and `DATABASE_URL_UNPOOLED` on Vercel.
 3. Copy the env file and fill in the values (or run `vercel env pull .env` to copy them from Vercel):
 
@@ -77,8 +81,8 @@ app/
   page.tsx              leads list
   leads/[id]/page.tsx   lead detail (map + solar panel)
 components/
-  add-lead-dialog.tsx, csv-import.tsx, fetch-solar-button.tsx,
-  solar-map.tsx, solar-panel-card.tsx, status-badge.tsx
+  add-lead-dialog.tsx, address-autocomplete.tsx, csv-import.tsx, fetch-solar-button.tsx,
+  maps-provider.tsx, solar-map.tsx, solar-panel-card.tsx, status-badge.tsx
 lib/
   google.ts             Geocoding + Solar API calls (server only)
   solar.ts              response types and metric helpers

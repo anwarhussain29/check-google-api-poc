@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { SunIcon } from "lucide-react";
+import { MapsProvider } from "@/components/maps-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
@@ -29,18 +30,20 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body className="min-h-screen bg-muted/40 antialiased">
-        <TooltipProvider>
-          <header className="border-b bg-background">
-            <div className="mx-auto flex h-14 max-w-7xl items-center px-6">
-              <Link href="/" className="flex items-center gap-2 font-semibold">
-                <SunIcon className="size-5 text-amber-500" />
-                Solar Leads POC
-              </Link>
-            </div>
-          </header>
-          <main className="mx-auto max-w-7xl px-6 py-8">{children}</main>
-          <Toaster richColors />
-        </TooltipProvider>
+        <MapsProvider>
+          <TooltipProvider>
+            <header className="border-b bg-background">
+              <div className="mx-auto flex h-14 max-w-7xl items-center px-6">
+                <Link href="/" className="flex items-center gap-2 font-semibold">
+                  <SunIcon className="size-5 text-amber-500" />
+                  Solar Leads POC
+                </Link>
+              </div>
+            </header>
+            <main className="mx-auto max-w-7xl px-6 py-8">{children}</main>
+            <Toaster richColors />
+          </TooltipProvider>
+        </MapsProvider>
       </body>
     </html>
   );

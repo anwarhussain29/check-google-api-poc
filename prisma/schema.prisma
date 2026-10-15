@@ -26,6 +26,8 @@ model Lead {
   co2KgPerMwh          Float?
   selectedPanelCount   Int?
   selectedEnergyKwh    Float?
+  kwhPerPanel          Float?
+  kwhPerKw             Float?
   rawInsights          String? // full buildingInsights JSON
   solarFetchedAt       DateTime?
   createdAt            DateTime  @default(now())

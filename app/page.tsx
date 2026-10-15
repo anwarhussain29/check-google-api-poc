@@ -51,6 +51,8 @@ export default async function LeadsPage() {
                 <TableHead className="text-right">Roof (m2)</TableHead>
                 <TableHead className="text-right">Panels</TableHead>
                 <TableHead className="text-right">Energy (kWh/yr)</TableHead>
+                <TableHead className="text-right">kWh/panel</TableHead>
+                <TableHead className="text-right">kWh/kW</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
@@ -81,6 +83,8 @@ export default async function LeadsPage() {
                   <TableCell className="text-right">
                     {formatNumber(lead.selectedEnergyKwh)}
                   </TableCell>
+                  <TableCell className="text-right">{formatNumber(lead.kwhPerPanel)}</TableCell>
+                  <TableCell className="text-right">{formatNumber(lead.kwhPerKw)}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <FetchSolarButton

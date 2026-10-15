@@ -128,3 +128,12 @@
     @apply font-sans;
   }
 }
+
+/* Google Places legacy autocomplete dropdown is appended to <body>, so it must sit above dialogs (z-50). */
+.pac-container {
+  z-index: 1000;
+  pointer-events: auto;
+  margin-top: 4px;
+  border-radius: var(--radius);
+  font-family: var(--font-sans);
+}

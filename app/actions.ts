@@ -7,12 +7,25 @@ import {
   configForPanelCount,
   defaultConfig,
   extractMetrics,
+  productionFactors,
   type BuildingInsights,
+  type SolarPanelConfig,
 } from "@/lib/solar";
 
 export type ActionResult = { ok: true; message?: string } | { ok: false; error: string };
 
 type LeadInput = { name: string; phone: string; address: string };
+
+function selectionData(insights: BuildingInsights, config: SolarPanelConfig | undefined) {
+  if (!config) {
+    return { selectedPanelCount: null, selectedEnergyKwh: null, kwhPerPanel: null, kwhPerKw: null };
+  }
+  return {
+    selectedPanelCount: config.panelsCount,
+    selectedEnergyKwh: config.yearlyEnergyDcKwh,
+    ...productionFactors(config, insights.solarPotential.panelCapacityWatts),
+  };
+}
 
 function normalize(input: Partial<LeadInput>): LeadInput | null {
   const name = input.name?.toString().trim() ?? "";
@@ -33,7 +46,14 @@ export async function createLead(
   });
   if (!lead) return { ok: false, error: "Name, phone and address are required" };
 
-  await db.lead.create({ data: { ...lead, source: "manual" } });
+  const lat = Number.parseFloat(formData.get("lat")?.toString() ?? "");
+  const lng = Number.parseFloat(formData.get("lng")?.toString() ?? "");
+  const coords =
+    Number.isFinite(lat) && Number.isFinite(lng)
+      ? { lat, lng, formattedAddress: lead.address }
+      : {};
+
+  await db.lead.create({ data: { ...lead, ...coords, source: "manual" } });
   revalidatePath("/");
   return { ok: true, message: `Lead "${lead.name}" added` };
 }
@@ -54,7 +74,10 @@ export async function fetchSolarForLead(id: string): Promise<ActionResult> {
   if (!lead) return { ok: false, error: "Lead not found" };
 
   try {
-    const geo = await geocodeAddress(lead.address);
+    const geo =
+      lead.lat != null && lead.lng != null
+        ? { lat: lead.lat, lng: lead.lng, formattedAddress: lead.formattedAddress ?? lead.address }
+        : await geocodeAddress(lead.address);
     const insights = await findClosestBuilding(geo.lat, geo.lng);
     const metrics = extractMetrics(insights);
     const config = defaultConfig(insights);
@@ -63,14 +86,13 @@ export async function fetchSolarForLead(id: string): Promise<ActionResult> {
       where: { id },
       data: {
         ...metrics,
+        ...selectionData(insights, config),
         solarStatus: "SUCCESS",
         solarError: null,
         formattedAddress: geo.formattedAddress,
         lat: insights.center?.latitude ?? geo.lat,
         lng: insights.center?.longitude ?? geo.lng,
         imageryQuality: insights.imageryQuality,
-        selectedPanelCount: config?.panelsCount ?? null,
-        selectedEnergyKwh: config?.yearlyEnergyDcKwh ?? null,
         rawInsights: JSON.stringify(insights),
         solarFetchedAt: new Date(),
       },
@@ -102,13 +124,7 @@ export async function savePanelSelection(id: string, panelCount: number): Promis
   const config = configForPanelCount(insights, panelCount);
   if (!config) return { ok: false, error: "No panel configurations available" };
 
-  await db.lead.update({
-    where: { id },
-    data: {
-      selectedPanelCount: config.panelsCount,
-      selectedEnergyKwh: config.yearlyEnergyDcKwh,
-    },
-  });
+  await db.lead.update({ where: { id }, data: selectionData(insights, config) });
   revalidatePath("/");
   return { ok: true };
 }

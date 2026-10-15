@@ -67,6 +67,15 @@ export function defaultConfig(insights: BuildingInsights): SolarPanelConfig | un
   return configs[configs.length - 1];
 }
 
+export function productionFactors(config: SolarPanelConfig, panelCapacityWatts: number) {
+  const { yearlyEnergyDcKwh, panelsCount } = config;
+  const systemKw = (panelsCount * panelCapacityWatts) / 1000;
+  return {
+    kwhPerPanel: panelsCount > 0 ? yearlyEnergyDcKwh / panelsCount : null,
+    kwhPerKw: systemKw > 0 ? yearlyEnergyDcKwh / systemKw : null,
+  };
+}
+
 export function formatNumber(value: number | null | undefined): string {
   if (value === null || value === undefined || Number.isNaN(value)) return "-";
   return Math.round(value).toLocaleString("en-US");
