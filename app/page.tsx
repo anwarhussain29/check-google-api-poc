@@ -1,103 +1,107 @@
-import Image from "next/image";
+import Link from "next/link";
+import { AddLeadDialog } from "@/components/add-lead-dialog";
+import { CsvImport } from "@/components/csv-import";
+import { FetchSolarButton } from "@/components/fetch-solar-button";
+import { StatusBadge } from "@/components/status-badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { db } from "@/lib/db";
+import { formatNumber } from "@/lib/solar";
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+export default async function LeadsPage() {
+  const leads = await db.lead.findMany({ orderBy: { createdAt: "desc" } });
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <Card>
+      <CardHeader className="flex flex-row items-start justify-between gap-4">
+        <div>
+          <CardTitle className="text-xl">Leads</CardTitle>
+          <CardDescription>
+            Import leads, then fetch Google Solar API building insights for each address.
+          </CardDescription>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+        <div className="flex gap-2">
+          <CsvImport />
+          <AddLeadDialog />
+        </div>
+      </CardHeader>
+      <CardContent>
+        {leads.length === 0 ? (
+          <p className="py-12 text-center text-muted-foreground">
+            No leads yet. Add one manually or import a CSV.
+          </p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Address</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Sunshine (h/yr)</TableHead>
+                <TableHead className="text-right">Roof (m2)</TableHead>
+                <TableHead className="text-right">Panels</TableHead>
+                <TableHead className="text-right">Energy (kWh/yr)</TableHead>
+                <TableHead />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {leads.map((lead) => (
+                <TableRow key={lead.id}>
+                  <TableCell className="font-medium">
+                    <Link href={`/leads/${lead.id}`} className="hover:underline">
+                      {lead.name}
+                    </Link>
+                  </TableCell>
+                  <TableCell>{lead.phone}</TableCell>
+                  <TableCell className="max-w-xs truncate" title={lead.address}>
+                    {lead.address}
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge status={lead.solarStatus} />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatNumber(lead.sunshineHoursPerYear)}
+                  </TableCell>
+                  <TableCell className="text-right">{formatNumber(lead.roofAreaM2)}</TableCell>
+                  <TableCell className="text-right">
+                    {lead.maxPanelCount != null
+                      ? `${lead.selectedPanelCount ?? "-"}/${lead.maxPanelCount}`
+                      : "-"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatNumber(lead.selectedEnergyKwh)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <FetchSolarButton
+                        leadId={lead.id}
+                        hasData={lead.solarStatus === "SUCCESS"}
+                        size="sm"
+                      />
+                      <Link
+                        href={`/leads/${lead.id}`}
+                        className="inline-flex h-7 items-center rounded-md px-2.5 text-[0.8rem] font-medium hover:bg-muted"
+                      >
+                        View
+                      </Link>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
   );
 }

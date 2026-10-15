@@ -1,36 +1,80 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Solar Leads POC
 
-## Getting Started
+A small Next.js app that imports leads (customer name, phone and address), looks each address up with the [Google Solar API](https://developers.google.com/maps/documentation/solar/overview) and stores and displays the building's solar potential. The UI is modeled on the [Google Solar API demo](https://mapsplatform.google.com/demos/solar/).
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Add leads manually or import them from a CSV file.
+- For each lead, the "Fetch Solar Data" button:
+  1. geocodes the address with the Geocoding API, then
+  2. calls `buildingInsights:findClosest`, trying `HIGH` imagery quality first and falling back to `MEDIUM` and then `LOW`.
+- The lead detail page shows a satellite map centered on the building next to an info panel with:
+  - sunshine hours per year, roof area, max panel count and CO2 offset factor
+  - panel count and yearly energy output gauges
+  - a panel count slider that saves the selected configuration and its energy output to the lead
+  - an "API Response" dialog with the raw Solar API JSON
+- Everything (metrics, selection and the raw response) is stored in SQLite.
+
+## Stack
+
+Next.js 15 (App Router, server actions), Tailwind CSS, shadcn/ui, Prisma with SQLite, `@vis.gl/react-google-maps` and `papaparse`.
+
+## Setup
+
+1. In Google Cloud, enable these APIs for your project and create an API key:
+   - Solar API
+   - Geocoding API
+   - Maps JavaScript API
+2. Copy the env file and fill in your keys:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   | Variable | Used by |
+   | --- | --- |
+   | `DATABASE_URL` | Prisma (defaults to `file:./dev.db`) |
+   | `GOOGLE_MAPS_API_KEY` | Server: Geocoding + Solar API |
+   | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Browser: Maps JavaScript API |
+
+   The same key works for both variables. For anything beyond local testing, use a separate browser key restricted by HTTP referrer.
+
+3. Install, create the database and run:
+
+   ```bash
+   npm install
+   npx prisma migrate dev
+   npm run dev
+   ```
+
+4. Open [http://localhost:3000](http://localhost:3000).
+
+## CSV format
+
+The file needs a header row with `name,phone,address`. Header matching is case-insensitive, and rows missing any of the three fields are skipped. A sample is in [`public/sample-leads.csv`](public/sample-leads.csv):
+
+```csv
+name,phone,address
+John Smith,+1 415 555 0101,"2101 Webster St, San Francisco, CA 94115"
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Solar API coverage varies by country. If no building is found near an address, the lead is marked "No coverage".
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project layout
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+app/
+  actions.ts            server actions: createLead, importLeadsCsv, fetchSolarForLead, savePanelSelection
+  page.tsx              leads list
+  leads/[id]/page.tsx   lead detail (map + solar panel)
+components/
+  add-lead-dialog.tsx, csv-import.tsx, fetch-solar-button.tsx,
+  solar-map.tsx, solar-panel-card.tsx, status-badge.tsx
+lib/
+  google.ts             Geocoding + Solar API calls (server only)
+  solar.ts              response types and metric helpers
+  db.ts                 Prisma client
+prisma/schema.prisma    Lead model
+```
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`npm run db:studio` opens Prisma Studio so you can browse the stored leads.

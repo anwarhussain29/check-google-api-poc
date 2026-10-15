@@ -1,0 +1,32 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Lead {
+  id                   String    @id @default(cuid())
+  name                 String
+  phone                String
+  address              String
+  source               String    @default("manual") // manual | csv
+  solarStatus          String    @default("PENDING") // PENDING | SUCCESS | NOT_FOUND | ERROR
+  solarError           String?
+  formattedAddress     String?
+  lat                  Float?
+  lng                  Float?
+  imageryQuality       String?
+  sunshineHoursPerYear Float?
+  roofAreaM2           Float?
+  maxPanelCount        Int?
+  co2KgPerMwh          Float?
+  selectedPanelCount   Int?
+  selectedEnergyKwh    Float?
+  rawInsights          String? // full buildingInsights JSON
+  solarFetchedAt       DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+}
