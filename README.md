@@ -8,14 +8,13 @@ A small Next.js app that imports leads (customer name, phone and address), looks
 - For each lead, the "Fetch Solar Data" button:
   1. uses the saved coordinates if the address came from autocomplete, otherwise geocodes the address with the Geocoding API, then
   2. calls `buildingInsights:findClosest`, trying `HIGH` imagery quality first and falling back to `MEDIUM` and then `LOW`.
-- The lead detail page shows a satellite map centered on the building next to an info panel with:
-  - sunshine hours per year, roof area, max panel count and CO2 offset factor
-  - panel count and yearly energy output gauges
-  - a panel count slider that saves the selected configuration and its energy output to the lead
-  - two production factors for the selected configuration, also shown in the leads table:
-    - kWh per panel per year = yearly energy output / panel count
-    - kWh per kW per year = yearly energy output / (panel count x panel watts / 1000)
+- The lead detail page shows a satellite map with Solar `dataLayers` overlays and an info panel:
+  - left switcher for Flux / DSM / RGB imagery (GeoTIFF via `dataLayers:get`)
+  - Mask Roof, monthly flux month slider, and Show panels on roof toggles
+  - real panel rectangles drawn from `solarPotential.solarPanels` for the selected count
+  - sunshine hours, roof area, max panel count, CO2 offset, gauges, panel slider, production factors
   - an "API Response" dialog with the raw Solar API JSON
+  - leads table eligibility filter based on kWh/kW ≥ 1100
 - Everything (metrics, selection and the raw response) is stored in Postgres (Neon).
 
 ## Stack
@@ -78,14 +77,15 @@ Solar API coverage varies by country. If no building is found near an address, t
 ```
 app/
   actions.ts            server actions: createLead, importLeadsCsv, fetchSolarForLead, savePanelSelection
+  api/solar/            data-layers + geotiff proxy routes
   page.tsx              leads list
-  leads/[id]/page.tsx   lead detail (map + solar panel)
+  leads/[id]/page.tsx   lead detail (SolarViewer)
 components/
-  add-lead-dialog.tsx, address-autocomplete.tsx, csv-import.tsx, fetch-solar-button.tsx,
-  maps-provider.tsx, solar-map.tsx, solar-panel-card.tsx, status-badge.tsx
+  solar-viewer.tsx, solar-panel-card.tsx, solar-panels-overlay.tsx, solar-ground-overlay.tsx, …
 lib/
-  google.ts             Geocoding + Solar API calls (server only)
-  solar.ts              response types and metric helpers
+  google.ts             Geocoding + Solar buildingInsights/dataLayers (server only)
+  geotiff.ts, visualize.ts, solar-layers.ts   client GeoTIFF overlay pipeline
+  solar.ts              response types, panels, eligibility helpers
   db.ts                 Prisma client
 prisma/schema.prisma    Lead model
 ```

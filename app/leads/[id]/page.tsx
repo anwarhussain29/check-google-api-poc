@@ -2,8 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeftIcon, MapPinIcon, PhoneIcon, UserIcon } from "lucide-react";
 import { FetchSolarButton } from "@/components/fetch-solar-button";
-import { SolarMap } from "@/components/solar-map";
-import { SolarPanelCard } from "@/components/solar-panel-card";
+import { SolarViewer } from "@/components/solar-viewer";
 import { StatusBadge } from "@/components/status-badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { db } from "@/lib/db";
@@ -73,15 +72,14 @@ export default async function LeadDetailPage({
 
       {hasData && lead.lat != null && lead.lng != null ? (
         <div className="relative h-[760px] overflow-hidden rounded-2xl border">
-          <SolarMap lat={lead.lat} lng={lead.lng} />
-          <div className="absolute top-4 left-4">
-            <SolarPanelCard
-              key={lead.solarFetchedAt?.toISOString()}
-              leadId={lead.id}
-              insights={insights}
-              initialPanelCount={lead.selectedPanelCount}
-            />
-          </div>
+          <SolarViewer
+            key={lead.solarFetchedAt?.toISOString()}
+            leadId={lead.id}
+            lat={lead.lat}
+            lng={lead.lng}
+            insights={insights}
+            initialPanelCount={lead.selectedPanelCount}
+          />
         </div>
       ) : (
         lead.solarStatus === "PENDING" && (

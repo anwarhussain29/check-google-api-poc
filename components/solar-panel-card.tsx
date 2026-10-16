@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   CodeXmlIcon,
   GaugeIcon,
@@ -21,24 +21,44 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   configForPanelCount,
   extractMetrics,
   formatNumber,
   getPanelConfigs,
+  MONTH_LABELS,
   productionFactors,
   type BuildingInsights,
 } from "@/lib/solar";
+
+export type OverlayControls = {
+  maskRoof: boolean;
+  showPanels: boolean;
+  monthIndex: number;
+  showFluxMonth: boolean;
+};
 
 type Props = {
   leadId: string;
   insights: BuildingInsights;
   initialPanelCount: number | null;
+  overlay: OverlayControls;
+  onOverlayChange: (patch: Partial<OverlayControls>) => void;
+  onPanelCountChange: (panelCount: number) => void;
 };
 
-export function SolarPanelCard({ leadId, insights, initialPanelCount }: Props) {
+export function SolarPanelCard({
+  leadId,
+  insights,
+  initialPanelCount,
+  overlay,
+  onOverlayChange,
+  onPanelCountChange,
+}: Props) {
   const metrics = extractMetrics(insights);
   const configs = useMemo(() => getPanelConfigs(insights), [insights]);
 
@@ -59,6 +79,10 @@ export function SolarPanelCard({ leadId, insights, initialPanelCount }: Props) {
   const factors = selected
     ? productionFactors(selected, insights.solarPotential.panelCapacityWatts)
     : null;
+
+  useEffect(() => {
+    onPanelCountChange(panelCount);
+  }, [panelCount, onPanelCountChange]);
 
   const persist = (idx: number) => {
     const config = configs[idx];
@@ -100,7 +124,7 @@ export function SolarPanelCard({ leadId, insights, initialPanelCount }: Props) {
   ];
 
   return (
-    <div className="w-full max-w-sm rounded-3xl bg-background p-6 shadow-xl">
+    <div className="min-h-0 w-full flex-1 overflow-y-auto overscroll-contain rounded-3xl bg-background p-6 shadow-xl">
       <ul className="space-y-5">
         {rows.map((row) => (
           <li key={row.name} className="flex items-center gap-3">
@@ -114,6 +138,50 @@ export function SolarPanelCard({ leadId, insights, initialPanelCount }: Props) {
           </li>
         ))}
       </ul>
+
+      <hr className="my-6" />
+
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <Label htmlFor="mask-roof" className="text-sm font-medium">
+            Mask Roof
+          </Label>
+          <Switch
+            id="mask-roof"
+            checked={overlay.maskRoof}
+            onCheckedChange={(checked) => onOverlayChange({ maskRoof: checked })}
+          />
+        </div>
+
+        {overlay.showFluxMonth && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2 text-sm">
+              <span className="text-muted-foreground">Solar flux</span>
+              <span className="font-medium">{MONTH_LABELS[overlay.monthIndex]}</span>
+            </div>
+            <Slider
+              min={0}
+              max={11}
+              step={1}
+              value={[overlay.monthIndex]}
+              onValueChange={(v) =>
+                onOverlayChange({ monthIndex: Array.isArray(v) ? v[0] : (v as number) })
+              }
+            />
+          </div>
+        )}
+
+        <div className="flex items-center justify-between gap-3">
+          <Label htmlFor="show-panels" className="text-sm font-medium">
+            Show panels on roof
+          </Label>
+          <Switch
+            id="show-panels"
+            checked={overlay.showPanels}
+            onCheckedChange={(checked) => onOverlayChange({ showPanels: checked })}
+          />
+        </div>
+      </div>
 
       <hr className="my-6" />
 
