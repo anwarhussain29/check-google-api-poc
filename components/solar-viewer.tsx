@@ -1,18 +1,22 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Map, Marker } from "@vis.gl/react-google-maps";
+import { Map, Marker, useMapsLibrary } from "@vis.gl/react-google-maps";
 import {
+  ChevronUpIcon,
   ImageIcon,
   LayersIcon,
   MountainSnowIcon,
   SunIcon,
 } from "lucide-react";
+import { toast } from "sonner";
 import { SolarGroundOverlay } from "@/components/solar-ground-overlay";
 import { SolarPanelCard, type OverlayControls } from "@/components/solar-panel-card";
 import { SolarPanelsOverlay } from "@/components/solar-panels-overlay";
 import { Button } from "@/components/ui/button";
 import { fetchDataLayerUrls, type Bounds } from "@/lib/geotiff";
+import { downloadSolarDesign } from "@/lib/export-design";
+import { panelPolygons } from "@/lib/panel-polygons";
 import {
   loadSolarLayers,
   renderOverlayCanvas,
@@ -37,6 +41,7 @@ const LAYER_BUTTONS: { id: OverlayLayerId; label: string; icon: typeof SunIcon }
 ];
 
 export function SolarViewer({ leadId, lat, lng, insights, initialPanelCount }: Props) {
+  const geometry = useMapsLibrary("geometry");
   const [layerId, setLayerId] = useState<OverlayLayerId>("flux");
   const [overlay, setOverlay] = useState<OverlayControls>({
     maskRoof: true,
@@ -45,6 +50,8 @@ export function SolarViewer({ leadId, lat, lng, insights, initialPanelCount }: P
     showFluxMonth: true,
   });
   const [panelCount, setPanelCount] = useState(0);
+  const [yearlyEnergyKwh, setYearlyEnergyKwh] = useState(0);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [layers, setLayers] = useState<LoadedLayers | null>(null);
   const [overlayUrl, setOverlayUrl] = useState<string | null>(null);
   const [bounds, setBounds] = useState<Bounds | null>(null);
@@ -58,6 +65,49 @@ export function SolarViewer({ leadId, lat, lng, insights, initialPanelCount }: P
   const onPanelCountChange = useCallback((count: number) => {
     setPanelCount(count);
   }, []);
+
+  const onEnergyChange = useCallback((energyKwh: number) => {
+    setYearlyEnergyKwh(energyKwh);
+  }, []);
+
+  const onExport = useCallback(() => {
+    if (!layers || loading) {
+      toast.error("Solar layers are still loading");
+      return;
+    }
+
+    const panels =
+      overlay.showPanels && geometry?.spherical
+        ? panelPolygons(insights, panelCount, geometry.spherical)
+        : [];
+
+    if (overlay.showPanels && panels.length === 0 && panelCount > 0 && !geometry?.spherical) {
+      toast.error("Map geometry is still loading");
+      return;
+    }
+
+    const source = renderOverlayCanvas(layers, layerId, overlay.maskRoof, overlay.monthIndex);
+    void downloadSolarDesign({
+      source,
+      bounds: layers.bounds,
+      panels,
+      panelCount,
+      energyKwh: yearlyEnergyKwh,
+    }).catch((error: unknown) => {
+      toast.error(error instanceof Error ? error.message : "Could not export the design");
+    });
+  }, [
+    geometry,
+    insights,
+    layerId,
+    layers,
+    loading,
+    overlay.maskRoof,
+    overlay.monthIndex,
+    overlay.showPanels,
+    panelCount,
+    yearlyEnergyKwh,
+  ]);
 
   useEffect(() => {
     onOverlayChange({ showFluxMonth: layerId === "flux" });
@@ -111,7 +161,7 @@ export function SolarViewer({ leadId, lat, lng, insights, initialPanelCount }: P
 
   const layerSwitcher = useMemo(
     () => (
-      <div className="flex flex-col gap-2 rounded-2xl bg-background/95 p-2 shadow-xl backdrop-blur">
+      <div className="flex flex-row gap-1 rounded-2xl bg-background/95 p-1.5 shadow-xl backdrop-blur md:flex-col md:gap-2 md:p-2">
         {LAYER_BUTTONS.map(({ id, label, icon: Icon }) => (
           <Button
             key={id}
@@ -132,6 +182,20 @@ export function SolarViewer({ leadId, lat, lng, insights, initialPanelCount }: P
       </div>
     ),
     [layerId],
+  );
+
+  const controls = (
+    <SolarPanelCard
+      leadId={leadId}
+      insights={insights}
+      initialPanelCount={initialPanelCount}
+      overlay={overlay}
+      onOverlayChange={onOverlayChange}
+      onPanelCountChange={onPanelCountChange}
+      onEnergyChange={onEnergyChange}
+      onExport={onExport}
+      exportDisabled={loading || !layers}
+    />
   );
 
   if (!hasKey) {
@@ -167,20 +231,38 @@ export function SolarViewer({ leadId, lat, lng, insights, initialPanelCount }: P
 
       <div className="pointer-events-none absolute inset-0">
         <div className="pointer-events-auto absolute top-4 left-4 z-10">{layerSwitcher}</div>
-        <div className="pointer-events-auto absolute top-4 right-4 bottom-4 z-10 flex w-full max-w-sm flex-col">
-          <SolarPanelCard
-            leadId={leadId}
-            insights={insights}
-            initialPanelCount={initialPanelCount}
-            overlay={overlay}
-            onOverlayChange={onOverlayChange}
-            onPanelCountChange={onPanelCountChange}
-          />
+
+        <div
+          className={cn(
+            "pointer-events-auto z-30 flex flex-col bg-background shadow-xl",
+            "fixed inset-x-0 bottom-0 rounded-t-3xl",
+            sheetOpen ? "h-[70dvh]" : "h-14",
+            "md:absolute md:inset-x-auto md:top-4 md:right-4 md:bottom-4 md:z-10 md:h-auto md:w-full md:max-w-sm md:rounded-none md:bg-transparent md:shadow-none",
+          )}
+        >
+          <button
+            type="button"
+            className="flex h-14 shrink-0 items-center justify-center gap-2 md:hidden"
+            onClick={() => setSheetOpen((open) => !open)}
+            aria-expanded={sheetOpen}
+          >
+            <span className="absolute top-2 h-1 w-10 rounded-full bg-muted-foreground/40" />
+            <span className="text-sm font-medium">Design</span>
+            <ChevronUpIcon className={cn("size-4 transition-transform", sheetOpen && "rotate-180")} />
+          </button>
+          <div
+            className={cn(
+              "min-h-0 flex-1 flex-col",
+              sheetOpen ? "flex" : "hidden md:flex",
+            )}
+          >
+            {controls}
+          </div>
         </div>
       </div>
 
       {(loading || error) && (
-        <div className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-background/95 px-4 py-2 text-sm shadow-lg">
+        <div className="absolute top-20 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-background/95 px-4 py-2 text-sm shadow-lg">
           <LayersIcon className="size-4 text-muted-foreground" />
           {loading ? (
             <span className="text-muted-foreground">Loading solar layers…</span>

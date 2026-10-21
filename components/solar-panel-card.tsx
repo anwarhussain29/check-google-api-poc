@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   CodeXmlIcon,
+  DownloadIcon,
   GaugeIcon,
   InfoIcon,
   LeafIcon,
@@ -49,6 +50,9 @@ type Props = {
   overlay: OverlayControls;
   onOverlayChange: (patch: Partial<OverlayControls>) => void;
   onPanelCountChange: (panelCount: number) => void;
+  onEnergyChange: (energyKwh: number) => void;
+  onExport: () => void;
+  exportDisabled: boolean;
 };
 
 export function SolarPanelCard({
@@ -58,6 +62,9 @@ export function SolarPanelCard({
   overlay,
   onOverlayChange,
   onPanelCountChange,
+  onEnergyChange,
+  onExport,
+  exportDisabled,
 }: Props) {
   const metrics = extractMetrics(insights);
   const configs = useMemo(() => getPanelConfigs(insights), [insights]);
@@ -83,6 +90,10 @@ export function SolarPanelCard({
   useEffect(() => {
     onPanelCountChange(panelCount);
   }, [panelCount, onPanelCountChange]);
+
+  useEffect(() => {
+    onEnergyChange(energyKwh);
+  }, [energyKwh, onEnergyChange]);
 
   const persist = (idx: number) => {
     const config = configs[idx];
@@ -253,9 +264,20 @@ export function SolarPanelCard({
         </>
       )}
 
-      <Dialog>
+      <div className="mt-6 flex gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          className="h-11 flex-1 rounded-xl"
+          disabled={exportDisabled}
+          onClick={onExport}
+        >
+          <DownloadIcon />
+          Export design
+        </Button>
+        <Dialog>
         <DialogTrigger
-          render={<Button variant="outline" className="mt-6 h-11 w-full rounded-xl" />}
+          render={<Button variant="outline" className="h-11 flex-1 rounded-xl" />}
         >
           <CodeXmlIcon />
           API Response
@@ -268,7 +290,8 @@ export function SolarPanelCard({
             {JSON.stringify(insights, null, 2)}
           </pre>
         </DialogContent>
-      </Dialog>
+        </Dialog>
+      </div>
     </div>
   );
 }

@@ -71,7 +71,7 @@ export default async function LeadDetailPage({
       )}
 
       {hasData && lead.lat != null && lead.lng != null ? (
-        <div className="relative h-[760px] overflow-hidden rounded-2xl border">
+        <div className="relative h-[calc(100dvh-10rem)] min-h-[480px] overflow-hidden rounded-2xl border md:h-[760px]">
           <SolarViewer
             key={lead.solarFetchedAt?.toISOString()}
             leadId={lead.id}
