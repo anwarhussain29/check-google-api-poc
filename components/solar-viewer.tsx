@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Map, Marker, useMapsLibrary } from "@vis.gl/react-google-maps";
 import {
   ChevronUpIcon,
@@ -14,8 +14,15 @@ import { SolarGroundOverlay } from "@/components/solar-ground-overlay";
 import { SolarPanelCard, type OverlayControls } from "@/components/solar-panel-card";
 import { SolarPanelsOverlay } from "@/components/solar-panels-overlay";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { fetchDataLayerUrls, type Bounds } from "@/lib/geotiff";
-import { downloadSolarDesign } from "@/lib/export-design";
+import { renderSolarDesign, saveSolarDesign } from "@/lib/export-design";
 import { panelPolygons } from "@/lib/panel-polygons";
 import {
   loadSolarLayers,
@@ -56,7 +63,11 @@ export function SolarViewer({ leadId, lat, lng, insights, initialPanelCount }: P
   const [overlayUrl, setOverlayUrl] = useState<string | null>(null);
   const [bounds, setBounds] = useState<Bounds | null>(null);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const previewUrlRef = useRef<string | null>(null);
+  const previewFile = useRef<File | null>(null);
 
   const onOverlayChange = useCallback((patch: Partial<OverlayControls>) => {
     setOverlay((prev) => ({ ...prev, ...patch }));
@@ -87,15 +98,28 @@ export function SolarViewer({ leadId, lat, lng, insights, initialPanelCount }: P
     }
 
     const source = renderOverlayCanvas(layers, layerId, overlay.maskRoof, overlay.monthIndex);
-    void downloadSolarDesign({
+    setExporting(true);
+    void renderSolarDesign({
       source,
       bounds: layers.bounds,
       panels,
       panelCount,
       energyKwh: yearlyEnergyKwh,
-    }).catch((error: unknown) => {
-      toast.error(error instanceof Error ? error.message : "Could not export the design");
-    });
+    })
+      .then(async (blob) => {
+        const result = await saveSolarDesign(blob);
+        if (result === "preview") {
+          if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+          const url = URL.createObjectURL(blob);
+          previewUrlRef.current = url;
+          previewFile.current = new File([blob], "solar-design.png", { type: "image/png" });
+          setPreviewUrl(url);
+        }
+      })
+      .catch((error: unknown) => {
+        toast.error(error instanceof Error ? error.message : "Could not export the design");
+      })
+      .finally(() => setExporting(false));
   }, [
     geometry,
     insights,
@@ -194,7 +218,7 @@ export function SolarViewer({ leadId, lat, lng, insights, initialPanelCount }: P
       onPanelCountChange={onPanelCountChange}
       onEnergyChange={onEnergyChange}
       onExport={onExport}
-      exportDisabled={loading || !layers}
+      exportDisabled={loading || !layers || exporting}
     />
   );
 
@@ -260,6 +284,51 @@ export function SolarViewer({ leadId, lat, lng, insights, initialPanelCount }: P
           </div>
         </div>
       </div>
+
+      <Dialog
+        open={previewUrl != null}
+        onOpenChange={(open) => {
+          if (open) return;
+          if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+          previewUrlRef.current = null;
+          previewFile.current = null;
+          setPreviewUrl(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Save solar design</DialogTitle>
+            <DialogDescription>
+              Tap Save, or press and hold the image and choose Add to Photos.
+            </DialogDescription>
+          </DialogHeader>
+          {previewUrl && (
+            // The image stays in the page so iOS Safari can save it from a long-press.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={previewUrl}
+              alt="Solar design"
+              className="max-h-[60vh] w-full rounded-lg object-contain"
+            />
+          )}
+          <Button
+            type="button"
+            onClick={() => {
+              const file = previewFile.current;
+              if (!file || !navigator.canShare?.({ files: [file] })) {
+                toast.message("Press and hold the image, then choose Add to Photos.");
+                return;
+              }
+              void navigator.share({ files: [file], title: "Solar design" }).catch((error: unknown) => {
+                if (error instanceof DOMException && error.name === "AbortError") return;
+                toast.message("Press and hold the image, then choose Add to Photos.");
+              });
+            }}
+          >
+            Save
+          </Button>
+        </DialogContent>
+      </Dialog>
 
       {(loading || error) && (
         <div className="absolute top-20 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-background/95 px-4 py-2 text-sm shadow-lg">

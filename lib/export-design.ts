@@ -11,15 +11,6 @@ type ExportInput = {
   energyKwh: number;
 };
 
-function loadImage(url: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error("Could not load the satellite map"));
-    image.src = url;
-  });
-}
-
 function frameFromHeaders(headers: Headers): MapFrame {
   const frame: MapFrame = {
     centerLat: Number(headers.get("X-Map-Center-Lat")),
@@ -35,7 +26,7 @@ function frameFromHeaders(headers: Headers): MapFrame {
   return frame;
 }
 
-async function fetchSatellite(bounds: Bounds): Promise<{ image: HTMLImageElement; frame: MapFrame }> {
+async function fetchSatellite(bounds: Bounds): Promise<{ image: ImageBitmap; frame: MapFrame }> {
   const params = new URLSearchParams({
     north: String(bounds.north),
     south: String(bounds.south),
@@ -49,29 +40,71 @@ async function fetchSatellite(bounds: Bounds): Promise<{ image: HTMLImageElement
   }
 
   const frame = frameFromHeaders(response.headers);
-  const blobUrl = URL.createObjectURL(await response.blob());
-  try {
-    const image = await loadImage(blobUrl);
-    return { image, frame };
-  } finally {
-    URL.revokeObjectURL(blobUrl);
-  }
+  const image = await createImageBitmap(await response.blob());
+  return { image, frame };
 }
 
-/** Satellite map, current overlay, panels, and a summary footer, downloaded as a PNG. */
-export async function downloadSolarDesign({
+function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) resolve(blob);
+      else reject(new Error("Could not create the image"));
+    }, "image/png");
+  });
+}
+
+function isIos(): boolean {
+  const ua = navigator.userAgent;
+  return (
+    /iPad|iPhone|iPod/.test(ua) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
+}
+
+export type SaveResult = "shared" | "downloaded" | "preview";
+
+/** Share or download a PNG. iOS Safari often blocks a download started after async work, so callers should show a preview when this returns "preview". */
+export async function saveSolarDesign(blob: Blob): Promise<SaveResult> {
+  const file = new File([blob], "solar-design.png", { type: "image/png" });
+  if (typeof navigator.share === "function" && navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: "Solar design" });
+      return "shared";
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return "shared";
+    }
+  }
+
+  if (!isIos()) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "solar-design.png";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return "downloaded";
+  }
+
+  return "preview";
+}
+
+/** Build a PNG of the satellite map, current overlay, panels, and summary footer. */
+export async function renderSolarDesign({
   source,
   bounds,
   panels,
   panelCount,
   energyKwh,
-}: ExportInput) {
+}: ExportInput): Promise<Blob> {
   const { image, frame } = await fetchSatellite(bounds);
-  const scale = Math.max(1, image.naturalWidth / 640);
+  try {
+  const scale = Math.max(1, image.width / 640);
   const footer = Math.round(72 * scale);
   const canvas = document.createElement("canvas");
-  canvas.width = image.naturalWidth;
-  canvas.height = image.naturalHeight + footer;
+  canvas.width = image.width;
+  canvas.height = image.height + footer;
 
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Could not create export canvas");
@@ -82,15 +115,15 @@ export async function downloadSolarDesign({
     bounds.north,
     bounds.west,
     frame,
-    image.naturalWidth,
-    image.naturalHeight,
+    image.width,
+    image.height,
   );
   const bottomRight = latLngToMapPixel(
     bounds.south,
     bounds.east,
     frame,
-    image.naturalWidth,
-    image.naturalHeight,
+    image.width,
+    image.height,
   );
   ctx.drawImage(
     source,
@@ -108,8 +141,8 @@ export async function downloadSolarDesign({
         point.lat,
         point.lng,
         frame,
-        image.naturalWidth,
-        image.naturalHeight,
+        image.width,
+        image.height,
       );
       if (index === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
@@ -125,18 +158,17 @@ export async function downloadSolarDesign({
   }
 
   ctx.fillStyle = "#0f172a";
-  ctx.fillRect(0, image.naturalHeight, canvas.width, footer);
+  ctx.fillRect(0, image.height, canvas.width, footer);
   ctx.fillStyle = "#ffffff";
   ctx.font = `600 ${Math.round(28 * scale)}px sans-serif`;
   ctx.textBaseline = "middle";
-  const textY = image.naturalHeight + footer / 2;
+  const textY = image.height + footer / 2;
   ctx.textAlign = "left";
   ctx.fillText(`${formatNumber(panelCount)} panels`, 28 * scale, textY);
   ctx.textAlign = "right";
   ctx.fillText(`${formatNumber(energyKwh)} kWh/yr`, canvas.width - 28 * scale, textY);
-
-  const link = document.createElement("a");
-  link.href = canvas.toDataURL("image/png");
-  link.download = "solar-design.png";
-  link.click();
+  return canvasToBlob(canvas);
+  } finally {
+    image.close();
+  }
 }

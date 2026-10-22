@@ -15,7 +15,7 @@ export default async function LeadsPage() {
         <div>
           <CardTitle className="text-xl">Leads</CardTitle>
           <CardDescription>
-            Import leads, then fetch Google Solar API building insights for each address.
+            Import leads, then fetch building insights for each address.
           </CardDescription>
         </div>
         <div className="flex gap-2">
@@ -29,7 +29,23 @@ export default async function LeadsPage() {
             No leads yet. Add one manually or import a CSV.
           </p>
         ) : (
-          <LeadsTable leads={leads} />
+          <LeadsTable
+            leads={leads.map((lead) => ({
+              id: lead.id,
+              name: lead.name,
+              phone: lead.phone,
+              address: lead.address,
+              solarStatus: lead.solarStatus,
+              sunshineHoursPerYear: lead.sunshineHoursPerYear,
+              roofAreaM2: lead.roofAreaM2,
+              maxPanelCount: lead.maxPanelCount,
+              selectedPanelCount: lead.selectedPanelCount,
+              selectedEnergyKwh: lead.selectedEnergyKwh,
+              kwhPerPanel: lead.kwhPerPanel,
+              kwhPerKw: lead.kwhPerKw,
+              createdAt: lead.createdAt.toISOString(),
+            }))}
+          />
         )}
       </CardContent>
     </Card>
