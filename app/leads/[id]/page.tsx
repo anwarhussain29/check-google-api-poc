@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeftIcon, MapPinIcon, PhoneIcon, UserIcon } from "lucide-react";
@@ -9,6 +10,47 @@ import { db } from "@/lib/db";
 import type { BuildingInsights } from "@/lib/solar";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const lead = await db.lead.findUnique({
+    where: { id },
+    select: { name: true, address: true },
+  });
+  if (!lead) return { title: "Lead" };
+
+  const title = `${lead.name} · iCheckEnergy`;
+  return {
+    title: lead.name,
+    description: lead.address,
+    openGraph: {
+      type: "website",
+      siteName: "iCheckEnergy",
+      locale: "en_US",
+      url: `/leads/${id}`,
+      title,
+      description: lead.address,
+      images: [
+        {
+          url: "/opengraph-image",
+          width: 1200,
+          height: 630,
+          alt: "iCheckEnergy — Innovation.Energy",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description: lead.address,
+      images: ["/twitter-image"],
+    },
+  };
+}
 
 export default async function LeadDetailPage({
   params,

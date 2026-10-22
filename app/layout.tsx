@@ -5,6 +5,7 @@ import Link from "next/link";
 import { MapsProvider } from "@/components/maps-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { getSiteUrl } from "@/lib/site";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -17,9 +18,25 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const description = "Innovation.Energy — review leads and solar building insights.";
+
 export const metadata: Metadata = {
-  title: "iCheckEnergy",
-  description: "Innovation.Energy — review leads and solar building insights",
+  metadataBase: getSiteUrl(),
+  applicationName: "iCheckEnergy",
+  title: {
+    default: "iCheckEnergy",
+    template: "%s · iCheckEnergy",
+  },
+  description,
+  openGraph: {
+    type: "website",
+    siteName: "iCheckEnergy",
+    locale: "en_US",
+    url: "/",
+  },
+  twitter: {
+    card: "summary_large_image",
+  },
 };
 
 export default function RootLayout({
