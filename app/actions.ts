@@ -54,7 +54,7 @@ export async function createLead(
       : {};
 
   await db.lead.create({ data: { ...lead, ...coords, source: "manual" } });
-  revalidatePath("/");
+  revalidatePath("/tools/solar-leads");
   return { ok: true, message: `Lead "${lead.name}" added` };
 }
 
@@ -65,7 +65,7 @@ export async function importLeadsCsv(
   if (valid.length > 0) {
     await db.lead.createMany({ data: valid.map((r) => ({ ...r, source: "csv" })) });
   }
-  revalidatePath("/");
+  revalidatePath("/tools/solar-leads");
   return { inserted: valid.length, skipped: rows.length - valid.length };
 }
 
@@ -97,8 +97,8 @@ export async function fetchSolarForLead(id: string): Promise<ActionResult> {
         solarFetchedAt: new Date(),
       },
     });
-    revalidatePath("/");
-    revalidatePath(`/leads/${id}`);
+    revalidatePath("/tools/solar-leads");
+    revalidatePath(`/tools/solar-leads/leads/${id}`);
     return { ok: true, message: "Solar data fetched" };
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);
@@ -110,8 +110,8 @@ export async function fetchSolarForLead(id: string): Promise<ActionResult> {
         solarFetchedAt: new Date(),
       },
     });
-    revalidatePath("/");
-    revalidatePath(`/leads/${id}`);
+    revalidatePath("/tools/solar-leads");
+    revalidatePath(`/tools/solar-leads/leads/${id}`);
     return { ok: false, error };
   }
 }
@@ -125,6 +125,7 @@ export async function savePanelSelection(id: string, panelCount: number): Promis
   if (!config) return { ok: false, error: "No panel configurations available" };
 
   await db.lead.update({ where: { id }, data: selectionData(insights, config) });
-  revalidatePath("/");
+  revalidatePath("/tools/solar-leads");
+  revalidatePath(`/tools/solar-leads/leads/${id}`);
   return { ok: true };
 }

@@ -400,7 +400,7 @@ export function LeadsTable({ leads }: { leads: LeadRow[] }) {
               {pageRows.map((lead) => (
                 <TableRow key={lead.id}>
                   <TableCell className="font-medium">
-                    <Link href={`/leads/${lead.id}`} className="hover:underline">
+                    <Link href={`/tools/solar-leads/leads/${lead.id}`} className="hover:underline">
                       {lead.name}
                     </Link>
                   </TableCell>
@@ -436,7 +436,7 @@ export function LeadsTable({ leads }: { leads: LeadRow[] }) {
                         size="sm"
                       />
                       <Link
-                        href={`/leads/${lead.id}`}
+                        href={`/tools/solar-leads/leads/${lead.id}`}
                         className="inline-flex h-7 items-center rounded-md px-2.5 text-[0.8rem] font-medium hover:bg-muted"
                       >
                         View

@@ -31,7 +31,7 @@ export async function generateMetadata({
       type: "website",
       siteName: "iCheckEnergy",
       locale: "en_US",
-      url: `/leads/${id}`,
+      url: `/tools/solar-leads/leads/${id}`,
       title,
       description: lead.address,
       images: [
@@ -67,7 +67,7 @@ export default async function LeadDetailPage({
   return (
     <div className="space-y-6">
       <Link
-        href="/"
+        href="/tools/solar-leads"
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeftIcon className="size-4" />

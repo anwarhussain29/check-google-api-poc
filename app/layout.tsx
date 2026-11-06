@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import Image from "next/image";
-import Link from "next/link";
-import { MapsProvider } from "@/components/maps-provider";
+import { Figtree, Geist_Mono, Syne } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { getSiteUrl } from "@/lib/site";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const syne = Syne({
+  variable: "--font-syne",
+  subsets: ["latin"],
+});
+
+const figtree = Figtree({
+  variable: "--font-figtree",
   subsets: ["latin"],
 });
 
@@ -18,7 +20,8 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const description = "Innovation.Energy — review leads and solar building insights.";
+const description =
+  "Innovation.Energy — solar and energy tools from iCheckEnergy.";
 
 export const metadata: Metadata = {
   metadataBase: getSiteUrl(),
@@ -45,31 +48,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
-      <body className="min-h-screen bg-muted/40 antialiased">
-        <MapsProvider>
-          <TooltipProvider>
-            <header className="border-b bg-background">
-              <div className="mx-auto flex h-16 max-w-7xl items-center px-6">
-                <Link href="/" className="flex items-center gap-3">
-                  <Image
-                    src="/icheck-energy-logo.png"
-                    alt="iCheckEnergy"
-                    width={250}
-                    height={90}
-                    priority
-                    className="h-10 w-auto"
-                  />
-                  <span className="hidden border-l pl-3 text-sm font-medium tracking-wide text-muted-foreground sm:inline">
-                    Innovation.Energy
-                  </span>
-                </Link>
-              </div>
-            </header>
-            <main className="mx-auto max-w-7xl px-6 py-8">{children}</main>
-            <Toaster richColors />
-          </TooltipProvider>
-        </MapsProvider>
+    <html
+      lang="en"
+      className={`${syne.variable} ${figtree.variable} ${geistMono.variable}`}
+    >
+      <body className="min-h-screen antialiased">
+        <TooltipProvider>
+          {children}
+          <Toaster richColors />
+        </TooltipProvider>
       </body>
     </html>
   );
