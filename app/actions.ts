@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requireAuth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { findClosestBuilding, geocodeAddress, NotFoundError } from "@/lib/google";
 import {
@@ -39,6 +40,8 @@ export async function createLead(
   _prev: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
+  if (!(await requireAuth())) return { ok: false, error: "Unauthorized" };
+
   const lead = normalize({
     name: formData.get("name")?.toString(),
     phone: formData.get("phone")?.toString(),
@@ -60,7 +63,9 @@ export async function createLead(
 
 export async function importLeadsCsv(
   rows: Partial<LeadInput>[],
-): Promise<{ inserted: number; skipped: number }> {
+): Promise<{ inserted: number; skipped: number; error?: string }> {
+  if (!(await requireAuth())) return { inserted: 0, skipped: 0, error: "Unauthorized" };
+
   const valid = rows.map(normalize).filter((r): r is LeadInput => r !== null);
   if (valid.length > 0) {
     await db.lead.createMany({ data: valid.map((r) => ({ ...r, source: "csv" })) });
@@ -70,6 +75,8 @@ export async function importLeadsCsv(
 }
 
 export async function fetchSolarForLead(id: string): Promise<ActionResult> {
+  if (!(await requireAuth())) return { ok: false, error: "Unauthorized" };
+
   const lead = await db.lead.findUnique({ where: { id } });
   if (!lead) return { ok: false, error: "Lead not found" };
 
@@ -117,6 +124,8 @@ export async function fetchSolarForLead(id: string): Promise<ActionResult> {
 }
 
 export async function savePanelSelection(id: string, panelCount: number): Promise<ActionResult> {
+  if (!(await requireAuth())) return { ok: false, error: "Unauthorized" };
+
   const lead = await db.lead.findUnique({ where: { id } });
   if (!lead?.rawInsights) return { ok: false, error: "No solar data for this lead" };
 

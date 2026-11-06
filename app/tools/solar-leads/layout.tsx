@@ -2,22 +2,26 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { MapsProvider } from "@/components/maps-provider";
+import { SignOutButton } from "@/components/sign-out-button";
+import { isAuthenticated } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Solar Leads",
   description: "Import leads and review Google Solar building insights.",
 };
 
-export default function SolarLeadsLayout({
+export default async function SolarLeadsLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const authed = await isAuthenticated();
+
   return (
     <MapsProvider>
       <div className="min-h-screen bg-muted/40">
         <header className="border-b bg-background">
-          <div className="mx-auto flex h-16 max-w-7xl items-center px-6">
+          <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-6">
             <Link href="/" className="flex items-center gap-3">
               <Image
                 src="/icheck-energy-logo.png"
@@ -31,6 +35,7 @@ export default function SolarLeadsLayout({
                 Solar Leads
               </span>
             </Link>
+            {authed ? <SignOutButton /> : null}
           </div>
         </header>
         <main className="mx-auto max-w-7xl px-6 py-8">{children}</main>

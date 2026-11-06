@@ -46,7 +46,12 @@ export function CsvImport() {
 
   const onImport = () =>
     startTransition(async () => {
-      const { inserted, skipped } = await importLeadsCsv(rows);
+      const result = await importLeadsCsv(rows);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      const { inserted, skipped } = result;
       toast.success(
         `Imported ${inserted} lead${inserted === 1 ? "" : "s"}${skipped ? `, skipped ${skipped} invalid row(s)` : ""}`,
       );
